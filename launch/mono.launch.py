@@ -1,0 +1,32 @@
+"""Monocular ORB-SLAM3 using the KITTI left color camera."""
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
+
+
+def generate_launch_description():
+    return LaunchDescription([
+        DeclareLaunchArgument('settings_file', description='Calibrated left-camera YAML'),
+        DeclareLaunchArgument('left_topic', default_value='/kitti/left/image_raw'),
+        DeclareLaunchArgument('enable_pangolin', default_value='false'),
+        DeclareLaunchArgument('use_sim_time', default_value='false'),
+        DeclareLaunchArgument('trajectory_output_prefix', default_value=''),
+        DeclareLaunchArgument('experiment_output_dir', default_value='results'),
+        DeclareLaunchArgument('image_reliability', default_value='best_effort'),
+        DeclareLaunchArgument('sequence_name', default_value='sequence'),
+        Node(package='orbslam3_dense_ros2', executable='orb_slam3_main', output='screen', parameters=[{
+            'experiment_output_dir': ParameterValue(LaunchConfiguration('experiment_output_dir'), value_type=str),
+            'sequence_name': ParameterValue(LaunchConfiguration('sequence_name'), value_type=str),
+            'image_reliability': ParameterValue(LaunchConfiguration('image_reliability'), value_type=str),
+            'sensor_mode': 'mono',
+            'settings_file': ParameterValue(LaunchConfiguration('settings_file'), value_type=str),
+            'left_topic': LaunchConfiguration('left_topic'),
+            'camera_frame': 'kitti_left_optical_frame',
+            'ground_frame': 'map',
+            'enable_pangolin': ParameterValue(LaunchConfiguration('enable_pangolin'), value_type=bool),
+            'use_sim_time': ParameterValue(LaunchConfiguration('use_sim_time'), value_type=bool),
+            'trajectory_output_prefix': ParameterValue(LaunchConfiguration('trajectory_output_prefix'), value_type=str),
+        }]),
+    ])

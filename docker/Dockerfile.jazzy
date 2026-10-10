@@ -1,0 +1,22 @@
+FROM ros:jazzy-ros-base
+SHELL ["/bin/bash", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake git libeigen3-dev libopencv-dev libpcl-dev \
+    libboost-serialization-dev libssl-dev libglew-dev libepoxy-dev \
+    libgl1-mesa-dev libegl1-mesa-dev libx11-dev libwayland-dev libxkbcommon-dev \
+    ros-jazzy-cv-bridge ros-jazzy-image-transport ros-jazzy-message-filters \
+    ros-jazzy-pcl-conversions ros-jazzy-tf2-ros ros-jazzy-ament-cmake-pytest \
+    python3-pytest python3-opencv && rm -rf /var/lib/apt/lists/*
+COPY scripts/install_pangolin.sh /tmp/install_pangolin.sh
+RUN bash /tmp/install_pangolin.sh /usr/local && ldconfig
+WORKDIR /ws
+COPY . src/orbslam3_dense_ros2
+ARG BUILD_JOBS=2
+RUN source /opt/ros/jazzy/setup.bash && \
+    MAKEFLAGS="-j${BUILD_JOBS} -l${BUILD_JOBS}" CMAKE_BUILD_PARALLEL_LEVEL=${BUILD_JOBS} colcon build \
+    --packages-select orbslam3_dense_ros2 --executor sequential \
+    --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+RUN source install/setup.bash && colcon test --packages-select orbslam3_dense_ros2 \
+    --event-handlers console_direct+ && colcon test-result --verbose
+CMD ["bash"]

@@ -1,0 +1,12 @@
+name: ROS 2 Jazzy
+on:
+  push:
+  pull_request:
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test against Ubuntu 24.04 and ROS 2 Jazzy
+        run: docker build --progress=plain -f docker/Dockerfile.jazzy .
