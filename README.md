@@ -58,3 +58,14 @@ docker build --progress=plain -f docker/Dockerfile.jazzy -t orbslam3-jazzy .
 The Dockerfile builds and runs tests against official Jazzy packages. GitHub Actions uses the same image recipe. Synthetic RGB-D tests cover startup, empty frames, both depth encodings, sensor QoS, pose/cloud/image/path output, metric depth, bounded trajectory history, and clean SIGINT shutdown. Real camera accuracy and desktop OpenGL operation require separate validation.
 
 Based on [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3), [ros2_orb_slam3](https://github.com/Mechazo11/ros2_orb_slam3) and [Map_ORBSLAM_ROS](https://github.com/LeonardoDiCaprio1/Map_ORBSLAM_ROS).
+
+
+## 独立 KITTI 工具包
+
+KITTI 数据集整理、标定配置生成和 ROS 2 图像/激光发布已迁至同级的
+`kitti_dataset_tools` ROS 2 包。将该目录放到工作空间 `src/`，执行
+`colcon build --packages-select kitti_dataset_tools` 后 source `install/setup.bash`。
+新命令为 `ros2 run kitti_dataset_tools kitti_player` 和
+`ros2 run kitti_dataset_tools generate_kitti_settings`；参见 [KITTI 指南](docs/KITTI.md)。
+旧脚本与旧播放器命令作为兼容入口，需要已安装此工具包。SLAM 本身不依赖它；
+未安装时只跳过 KITTI 集成测试。

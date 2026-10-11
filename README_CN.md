@@ -5,8 +5,10 @@
 ## 编译前自动检查
 
 在项目根目录执行：
-
+1、对检查脚本添加权限
+2、执行环境检查脚本
 ```bash
+sudo chmod +x check_build_env.sh
 bash scripts/check_build_env.sh
 ```
 
@@ -30,6 +32,7 @@ bash scripts/check_build_env.sh --pangolin-prefix "$HOME/.local" --jobs 2
 
 ```bash
 sudo apt update
+
 sudo apt install build-essential cmake git python3-colcon-common-extensions python3-rosdep \
   libeigen3-dev libopencv-dev libpcl-dev libboost-serialization-dev libssl-dev \
   libglew-dev libepoxy-dev libgl1-mesa-dev libegl1-mesa-dev libx11-dev \
@@ -115,3 +118,14 @@ Docker 构建使用官方 Jazzy 镜像，并执行 `colcon build` 和运行测�
 - [ros2_orb_slam3](https://github.com/Mechazo11/ros2_orb_slam3)
 - [Map_ORBSLAM_ROS](https://github.com/LeonardoDiCaprio1/Map_ORBSLAM_ROS)
 - [原项目演示视频](https://www.bilibili.com/video/BV1g8Y9zMEZ4/)
+
+
+## 独立 KITTI 工具包
+
+KITTI 数据集整理、标定配置生成和 ROS 2 图像/激光发布已迁至同级的
+`kitti_dataset_tools` ROS 2 包。将该目录放到工作空间 `src/`，执行
+`colcon build --packages-select kitti_dataset_tools` 后 source `install/setup.bash`。
+新命令为 `ros2 run kitti_dataset_tools kitti_player` 和
+`ros2 run kitti_dataset_tools generate_kitti_settings`；参见 [KITTI 指南](docs/KITTI.md)。
+旧脚本与旧播放器命令作为兼容入口，需要已安装此工具包。SLAM 本身不依赖它；
+未安装时只跳过 KITTI 集成测试。

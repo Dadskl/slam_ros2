@@ -1,5 +1,4 @@
 """Validate KITTI color calibration and the actual stereo topic pipeline."""
-import importlib.util
 import os
 from pathlib import Path
 import signal
@@ -13,9 +12,7 @@ import pytest
 from experiment_assertions import validate_experiment
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('kitti_player', ROOT / 'scripts/kitti_player.py')
-player = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(player)
+player = pytest.importorskip('kitti_dataset_tools.player', reason='Install optional kitti_dataset_tools for KITTI integration testing')
 
 
 def make_sequence(directory, frames=3):
@@ -34,42 +31,6 @@ def make_sequence(directory, frames=3):
         'P2: 280 0 320 7 0 280 240 0 0 0 1 0\n'
         'P3: 280 0 320 -21 0 280 240 0 0 0 1 0\n')
     return directory
-
-
-def test_prepare_color_calibration(tmp_path):
-    seq = make_sequence(tmp_path / '00')
-    out = tmp_path / 'camera.yaml'
-    assert player.main(['--sequence-dir', str(seq), '--settings-output', str(out), '--prepare-only']) == 0
-    settings = cv2.FileStorage(str(out), cv2.FILE_STORAGE_READ)
-    assert settings.getNode('Camera1.fx').real() == 280.0
-    assert settings.getNode('Camera.width').real() == 640
-    assert settings.getNode('Camera.RGB').real() == 0
-    assert settings.getNode('Stereo.b').real() == pytest.approx(0.1)
-    settings.release()
-
-
-def test_reject_missing_pair(tmp_path):
-    seq = make_sequence(tmp_path / '00')
-    (seq / 'image_3' / '000001.png').unlink()
-    with pytest.raises(ValueError, match='matching'):
-        player.read_sequence(seq)
-
-
-def test_select_sequence(tmp_path):
-    make_sequence(tmp_path / 'sequences' / '03')
-    out = tmp_path / 'selected.yaml'
-    assert player.main(['--dataset-root', str(tmp_path), '--sequence', '3',
-                        '--settings-output', str(out), '--prepare-only']) == 0
-    assert out.is_file()
-    with pytest.raises(SystemExit):
-        player.main(['--dataset-root', str(tmp_path), '--sequence', '../03'])
-
-
-def test_reject_repeated_timestamps(tmp_path):
-    seq = make_sequence(tmp_path / '00')
-    (seq / 'times.txt').write_text('0\n0\n0.2\n')
-    with pytest.raises(ValueError, match='strictly increasing'):
-        player.read_sequence(seq)
 
 
 def test_stereo_topics(tmp_path, monkeypatch):

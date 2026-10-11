@@ -18,13 +18,13 @@ dataset/sequences/00/
 
 ## 先生成该序列的配置
 
-完成主 README 中的 Jazzy 编译步骤，然后执行：
+先将独立 `kitti_dataset_tools` 包放在工作空间 `src/` 下（与本 SLAM 包同级），在工作空间根目录运行 `colcon build --packages-select kitti_dataset_tools`。它不依赖 ORB-SLAM3，数据集整理、配置生成与播放的实现均在该包中。然后执行：
 
 ```bash
 source /opt/ros/jazzy/setup.bash
 source ~/robot_ws/install/setup.bash
 
-ros2 run orbslam3_dense_ros2 kitti_player \
+ros2 run kitti_dataset_tools kitti_player \
   --sequence-dir /你的数据目录/dataset/sequences/00 \
   --settings-output ~/robot_ws/kitti_00_color.yaml \
   --prepare-only
@@ -48,7 +48,7 @@ ros2 launch orbslam3_dense_ros2 stereo.launch.py \
 
 ```bash
 source ~/robot_ws/install/setup.bash
-ros2 run orbslam3_dense_ros2 kitti_player \
+ros2 run kitti_dataset_tools kitti_player \
   --sequence-dir /你的数据目录/dataset/sequences/00 \
   --publish-clock --speed 1.0 --reliability reliable
 ```
@@ -65,7 +65,7 @@ ros2 run orbslam3_dense_ros2 kitti_player \
 
 ```bash
 ros2 launch orbslam3_dense_ros2 mono.launch.py settings_file:=$HOME/robot_ws/kitti_00_color.yaml use_sim_time:=true trajectory_output_prefix:=$HOME/robot_ws/results/00_mono
-ros2 run orbslam3_dense_ros2 kitti_player --sequence-dir /你的数据目录/dataset/sequences/00 --mode mono --publish-clock --reliability reliable
+ros2 run kitti_dataset_tools kitti_player --sequence-dir /你的数据目录/dataset/sequences/00 --mode mono --publish-clock --reliability reliable
 ```
 
 两条命令分别在两个终端运行。双目惯性模式使用 `stereo_inertial.launch.py`，它要求左右图像和 `sensor_msgs/msg/Imu` 具有同一时间基准。订阅端默认接收 `/kitti/imu`，缓冲并按帧时间戳向 ORB-SLAM3 提交测量。配置必须包含实测 `IMU.T_b_c1`、`IMU.Frequency`、`IMU.NoiseGyro`、`IMU.NoiseAcc`、`IMU.GyroWalk`、`IMU.AccWalk`。当前 `kitti_player` **不会发布 IMU**，因为 odometry 图像、Velodyne、标定和位姿压缩包都没有 IMU 原始测量。不能凭 `poses` 合成后宣称是实测 IMU。
@@ -103,3 +103,39 @@ ros2 topic echo /camera_pose --once
 默认不打开 Pangolin。需要桌面窗口时，在终端一的 launch 命令加 `enable_pangolin:=true`。使用 `Ctrl+C` 退出 SLAM。
 
 来源：[KITTI odometry 官方页面](https://www.cvlibs.net/datasets/kitti/eval_odometry.php)、[官方页面推荐的 pykitti 标定和时间读取实现](https://github.com/utiasSTARS/pykitti/blob/master/pykitti/odometry.py)。
+
+## 同步发布 Velodyne 激光点云
+
+在原有 `kitti_player` 命令后追加 `--publish-velodyne`，读取当前序列的
+`velodyne/000000.bin` 等文件，与同帧图像使用相同 ROS 时间戳。默认不启用。
+
+```bash
+ros2 run kitti_dataset_tools kitti_player \
+  --dataset-root /home/alabex/dataset/kitti --sequence 00 \
+  --publish-velodyne --publish-clock --wait-for-subscribers 0
+```
+
+上面的命令直接播放，适合查看 topic。运行 SLAM 时，先启动原有 stereo launch，
+设置 `use_sim_time:=true`，去掉 `--wait-for-subscribers 0` 即可等待图像订阅者。
+播放器不要求激光订阅者在线。
+
+- 默认话题 `/kitti/velodyne_points`，类型 `sensor_msgs/msg/PointCloud2`。
+- 字段 `x/y/z/intensity` 均为 float32，每点 16 字节，保留 KITTI 反射强度。
+- 默认 frame 为 `kitti_velodyne`，原始雷达坐标，单位米，x 前、y 左、z 上。
+- `--velodyne-topic` 和 `--velodyne-frame` 可修改话题和帧名；改帧名不会变换坐标。
+- 点云和图像共用 `--speed`、`--start-frame`、`--max-frames`、`--publish-clock`
+  和 `--reliability`（默认 reliable、volatile、depth 10）。
+- 启动时检查整段序列点云与图像帧号一一对应、文件非空且长度为 16 的倍数。
+  缺失或损坏会报错，不会静默跳帧；`--prepare-only` 也执行该检查。
+
+```bash
+ros2 topic info /kitti/velodyne_points
+ros2 topic hz /kitti/velodyne_points
+```
+
+RViz 查看原始点云时，将 Fixed Frame 设为 `kitti_velodyne`，添加 PointCloud2
+并选择该话题。这次仅增加数据发布，不发布相机与雷达之间的静态 TF，不进行运动补偿，
+也未将点云接入 ORB-SLAM3 位姿估计或全局建图。因此不能直接在 `map/odom`
+下叠加显示；后续融合需使用标定外参，并正确处理左彩色相机坐标系。
+
+修改源码后需重新构建并 source 工作空间的 `install/setup.bash`。
