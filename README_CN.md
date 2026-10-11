@@ -2,16 +2,39 @@
 
 目标环境为 **Ubuntu 24.04、ROS 2 Jazzy、C++17**。使用系统 OpenCV 4、Eigen 3、PCL 和源码安装的 Pangolin 0.9.2。ROS 入口支持 RGB-D、单目、双目和双目惯性模式；KITTI 彩色图像使用方法见 [KITTI 指南](docs/KITTI.md)。稠密点云仍需要深度图。双目惯性模式需要同步的 IMU 原始测量以及实测的相机—IMU 标定；当前 KITTI odometry 压缩包不包含这些测量。
 
-## 编译前自动检查
-
-在项目根目录执行：
-1、对检查脚本添加权限
-2、执行环境检查脚本
+## 安装步骤如下：
+### 步骤一：在home下执行以下脚本，建立好文件目录
 ```bash
-sudo chmod +x check_build_env.sh
+mkdir ros2_slam
+cd ros2_slam
+mkdir src
+cd src
+```
+### 步骤二：将SLAM源码克隆下来
+```bash
+git clone https://github.com/Dadskl/slam_ros2.git
+```
+### 步骤三：进入项目
+```bash
+cd slam_ros2
+```
+### 步骤四：对检查脚本添加权限、执行环境检查脚本
+```bash
+sudo chmod +x scripts/check_build_env.sh
 bash scripts/check_build_env.sh
 ```
+### 步骤五：下载KITTI数据集处理脚本
+```bash
+cd ros2_slam/src
+git clone https://github.com/Dadskl/KITTI-To-Ros2.git
+```
+### 步骤六：开始编译
+```bash
+cd ros2_slam
+colcon build
+```
 
+## 环境检查说明：
 脚本要求 **Ubuntu 24.04 LTS + ROS 2 Jazzy**。系统或 ROS 版本不匹配、Jazzy 未安装或环境混用了其他 ROS 时，会说明原因并退出，不自动升级系统或安装其他 ROS 版本。尚未加载环境时会自动加载 `/opt/ros/jazzy/setup.bash`。
 
 版本通过后，脚本列出并自动通过 apt 安装缺少的系统、ROS 和测试依赖；可能需要输入 sudo 密码。Pangolin 会用无图形窗口的小程序验证编译、链接和动态库加载；不可用时调用 `scripts/install_pangolin.sh` 构建 v0.9.2，默认安装到 `~/.local`。最后验证本项目 CMake 配置，通过才显示 **“可以编译”**。这些检查不会编译完整 SLAM 项目。
@@ -26,9 +49,12 @@ bash scripts/check_build_env.sh --pangolin-prefix "$HOME/.local" --jobs 2
 
 检查日志默认位于 `~/.cache/orbslam3_dense_ros2/environment/` 的独立运行目录，可用 `--log-dir` 指定。通过后按提示 `source` 生成的 `build_env.sh`，再在工作空间根目录执行它给出的 `colcon build` 命令。脚本不会自动改写 `.bashrc`。不要在已激活的 Conda/virtualenv 中进行此项目的 ROS 编译。
 
-## 安装与编译
+## 手动安装与编译
 
-先按 [ROS 官方指南](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html) 安装 Jazzy，然后在 Ubuntu 终端执行：
+ROS的安装可参照鱼香ROS一键安装：
+```bash
+wget http://fishros.com/install -O fishros && . fishros
+```
 
 ```bash
 sudo apt update
@@ -40,7 +66,7 @@ sudo apt install build-essential cmake git python3-colcon-common-extensions pyth
 
 mkdir -p ~/robot_ws/src
 cd ~/robot_ws/src
-git clone https://github.com/zgfbupt/orbslam3_dense_ros2.git
+git clone https://github.com/Dadskl/slam_ros2.git
 cd orbslam3_dense_ros2
 bash scripts/install_pangolin.sh "$HOME/.local"
 
